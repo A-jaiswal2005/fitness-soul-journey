@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,13 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { auth, googleProvider } from '@/lib/firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  onAuthStateChanged
+} from 'firebase/auth';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -30,17 +36,27 @@ const Auth = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
+  // Check if user is already authenticated
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in, redirect to profile
+        navigate('/profile');
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Demo mode - simply redirect to profile setup
-      navigate('/profile');
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       toast.success('Welcome back!');
+      navigate('/profile');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Login failed. Please check your credentials.');
@@ -60,12 +76,9 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Demo mode - simply redirect to profile setup
-      navigate('/profile');
+      await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
       toast.success('Account created successfully!');
+      navigate('/profile');
     } catch (error) {
       console.error('Signup error:', error);
       toast.error('Signup failed. Please try again.');
@@ -78,12 +91,9 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Demo mode - simply redirect to profile setup
-      navigate('/profile');
+      await signInWithPopup(auth, googleProvider);
       toast.success('Successfully signed in with Google!');
+      navigate('/profile');
     } catch (error) {
       console.error('Google auth error:', error);
       toast.error('Google authentication failed. Please try again.');

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
@@ -10,17 +9,28 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import { toast } from 'sonner';
 
 export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const isAuthenticated = false; // This should be replaced with actual auth state
   const isHome = location.pathname === '/';
   const isDashboard = location.pathname.includes('/dashboard');
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setIsAuthenticated(!!user);
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,21 +51,28 @@ export const Navbar: React.FC = () => {
     document.documentElement.classList.toggle('dark');
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast.success('You have been logged out');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to log out');
+      console.error(error);
+    }
+  };
+
   const handleNavLinkClick = (path: string) => {
     if (path.startsWith('#')) {
-      // Handle anchor links
       const element = document.querySelector(path);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
       } else if (isHome) {
-        // If on home page but anchor doesn't exist yet, just stay on page
         return;
       } else {
-        // If not on home page, navigate to home page with anchor
         navigate('/' + path);
       }
     } else {
-      // Handle regular navigation
       navigate(path);
     }
   };
@@ -74,16 +91,12 @@ export const Navbar: React.FC = () => {
 
   const isActiveLink = (path: string) => {
     if (path.startsWith('#')) {
-      // For anchor links, match if we're on home page and hash matches
       return isHome && location.hash === path;
     } else if (path === '/dashboard') {
-      // For dashboard home, match exact path
       return location.pathname === path;
     } else if (path.includes('/dashboard/')) {
-      // For dashboard tabs, match if current path includes the tab path
       return location.pathname.includes(path);
     }
-    // For other paths, exact match
     return location.pathname === path;
   };
 
@@ -106,7 +119,6 @@ export const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Desktop navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             {navLinks.map((link) => (
               <button
@@ -135,7 +147,7 @@ export const Navbar: React.FC = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
-                    <button className="flex items-center w-full">
+                    <button className="flex items-center w-full" onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
                     </button>
@@ -160,7 +172,6 @@ export const Navbar: React.FC = () => {
             </Button>
           </nav>
 
-          {/* Mobile menu button */}
           <div className="flex md:hidden items-center space-x-2">
             <Button 
               variant="ghost" 
@@ -183,7 +194,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {isMobile && isOpen && (
         <div className="md:hidden bg-background/95 backdrop-blur-md animate-slide-in">
           <div className="px-4 pt-2 pb-4 space-y-1 border-t">

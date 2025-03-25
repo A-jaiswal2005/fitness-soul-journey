@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 import { toast } from 'sonner';
 
 export const Navbar: React.FC = () => {
@@ -53,7 +52,7 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await auth.signOut();
       toast.success('You have been logged out');
       navigate('/');
     } catch (error) {

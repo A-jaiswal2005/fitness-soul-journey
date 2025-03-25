@@ -24,11 +24,23 @@ export const Navbar: React.FC = () => {
   const isDashboard = location.pathname.includes('/dashboard');
 
   useEffect(() => {
+    const checkAuth = () => {
+      const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+      setIsAuthenticated(isAuth);
+    };
+    
+    checkAuth();
+    
+    window.addEventListener('storage', checkAuth);
+    
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setIsAuthenticated(!!user);
     });
     
-    return () => unsubscribe();
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -52,7 +64,11 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userEmail');
+      
       await auth.signOut();
+      
       toast.success('You have been logged out');
       navigate('/');
     } catch (error) {

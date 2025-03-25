@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -34,12 +35,12 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Firebase authentication has been removed
-      // Mock successful login for demo purposes
-      toast.info('Authentication provider has been removed');
+      // Mock successful login
       setTimeout(() => {
         setIsLoading(false);
-        toast.success('This is a demo login');
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userEmail', loginEmail);
+        toast.success('Login successful!');
         navigate('/profile');
       }, 1000);
     } catch (error) {
@@ -60,12 +61,12 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Firebase authentication has been removed
-      // Mock successful signup for demo purposes
-      toast.info('Authentication provider has been removed');
+      // Mock successful signup
       setTimeout(() => {
         setIsLoading(false);
-        toast.success('This is a demo signup');
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userEmail', signupEmail);
+        toast.success('Account created successfully!');
         navigate('/profile');
       }, 1000);
     } catch (error) {
@@ -79,12 +80,12 @@ const Auth = () => {
     setIsLoading(true);
     
     try {
-      // Firebase authentication has been removed
-      // Mock successful Google auth for demo purposes
-      toast.info('Authentication provider has been removed');
+      // Mock successful Google auth
       setTimeout(() => {
         setIsLoading(false);
-        toast.success('This is a demo Google sign-in');
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userEmail', 'google.user@example.com');
+        toast.success('Successfully signed in with Google!');
         navigate('/profile');
       }, 1000);
     } catch (error) {

@@ -9,39 +9,18 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
-import { auth } from '@/lib/firebase';
 import { toast } from 'sonner';
 
 export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const isHome = location.pathname === '/';
   const isDashboard = location.pathname.includes('/dashboard');
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const isAuth = localStorage.getItem('isAuthenticated') === 'true';
-      setIsAuthenticated(isAuth);
-    };
-    
-    checkAuth();
-    
-    window.addEventListener('storage', checkAuth);
-    
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setIsAuthenticated(!!user);
-    });
-    
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,19 +41,9 @@ export const Navbar: React.FC = () => {
     document.documentElement.classList.toggle('dark');
   };
 
-  const handleLogout = async () => {
-    try {
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userEmail');
-      
-      await auth.signOut();
-      
-      toast.success('You have been logged out');
-      navigate('/');
-    } catch (error) {
-      toast.error('Failed to log out');
-      console.error(error);
-    }
+  const handleLogout = () => {
+    navigate('/');
+    toast.success('Navigation complete');
   };
 
   const handleNavLinkClick = (path: string) => {
@@ -147,35 +116,27 @@ export const Navbar: React.FC = () => {
               </button>
             ))}
             
-            {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Link to="/profile" className="flex items-center w-full">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <button className="flex items-center w-full" onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </button>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              !isDashboard && (
-                <Button asChild className="bg-primary hover:bg-primary/90">
-                  <Link to="/auth">Get Started</Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <User className="h-5 w-5" />
                 </Button>
-              )
-            )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Link to="/profile" className="flex items-center w-full">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <button className="flex items-center w-full" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Go Home</span>
+                  </button>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Button 
               variant="ghost" 
@@ -222,14 +183,12 @@ export const Navbar: React.FC = () => {
               </button>
             ))}
             
-            {!isAuthenticated && !isDashboard && (
-              <Button 
-                asChild 
-                className="w-full mt-3 bg-primary hover:bg-primary/90"
-              >
-                <Link to="/auth">Get Started</Link>
-              </Button>
-            )}
+            <Button 
+              asChild 
+              className="w-full mt-3 bg-primary hover:bg-primary/90"
+            >
+              <Link to="/dashboard">Go to Dashboard</Link>
+            </Button>
           </div>
         </div>
       )}

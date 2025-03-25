@@ -1,13 +1,16 @@
 
-// Empty auth service - no actual authentication required
+// This file is now deprecated as we're using Supabase authentication
+// It's kept for backward compatibility with any existing code
+
 const auth = {
-  currentUser: { email: 'user@example.com' }, // Always return a mock user
+  currentUser: null,
   onAuthStateChanged: (callback) => {
-    // Always call with a mock user (always authenticated)
-    callback(auth.currentUser);
+    console.warn('Using deprecated firebase.ts - switch to useAuth() from AuthContext');
+    // Return empty function for unsubscribe
     return () => {};
   },
   signOut: async () => {
+    console.warn('Using deprecated firebase.ts - switch to useAuth() from AuthContext');
     return Promise.resolve();
   }
 };

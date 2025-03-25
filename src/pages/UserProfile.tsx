@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,8 +37,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { ChevronRight, Info } from 'lucide-react';
+import { ChevronRight, Info, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserFormData {
   name: string;
@@ -58,6 +59,8 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const { user } = useAuth();
   
   const form = useForm<UserFormData>({
     defaultValues: {
@@ -74,10 +77,84 @@ const UserProfile = () => {
     },
   });
   
-  const { watch, setValue } = form;
+  const { watch, setValue, reset } = form;
   const sex = watch('sex');
   const age = watch('age');
   const menstrualTracking = watch('menstrualTracking');
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user) return;
+
+      try {
+        // Try to fetch profile from Supabase
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+
+        if (data) {
+          // Update form with data from Supabase
+          reset({
+            name: data.name || '',
+            age: data.age || undefined,
+            sex: data.sex as any || undefined,
+            weight: data.weight || undefined,
+            height: data.height || undefined,
+            goal: data.goal || '',
+            experienceLevel: data.experience_level || 'beginner',
+            menstrualTracking: data.menstrual_tracking || false,
+            lastPeriodDate: data.last_period_date || '',
+            cycleDuration: data.cycle_duration || 28,
+          });
+
+          // Also update localStorage for compatibility with existing components
+          localStorage.setItem('fitnessUserProfile', JSON.stringify({
+            name: data.name || '',
+            age: data.age || 30,
+            sex: data.sex || 'male',
+            weight: data.weight || 70,
+            height: data.height || 170,
+            goal: data.goal || 'improve_fitness',
+            experienceLevel: data.experience_level || 'beginner',
+            menstrualTracking: data.menstrual_tracking || false,
+            lastPeriodDate: data.last_period_date || '',
+            cycleDuration: data.cycle_duration || 28,
+          }));
+        } else {
+          // Check if we have data in localStorage as a fallback
+          const storedProfile = localStorage.getItem('fitnessUserProfile');
+          if (storedProfile) {
+            const profile = JSON.parse(storedProfile);
+            reset({
+              name: profile.name || '',
+              age: profile.age || undefined,
+              sex: profile.sex || undefined,
+              weight: profile.weight || undefined,
+              height: profile.height || undefined,
+              goal: profile.goal || '',
+              experienceLevel: profile.experienceLevel || 'beginner',
+              menstrualTracking: profile.menstrualTracking || false,
+              lastPeriodDate: profile.lastPeriodDate || '',
+              cycleDuration: profile.cycleDuration || 28,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        toast.error('Failed to load profile');
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    loadUserProfile();
+  }, [user, reset]);
   
   const goToNextStep = () => {
     if (currentStep === 1) {
@@ -112,19 +189,41 @@ const UserProfile = () => {
   };
   
   const onSubmit = async (data: UserFormData) => {
+    if (!user) {
+      toast.error('You must be signed in to save your profile');
+      navigate('/auth');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      console.log('Form data:', data);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Save to Supabase
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: user.id,
+          name: data.name,
+          age: data.age,
+          sex: data.sex,
+          weight: data.weight,
+          height: data.height,
+          goal: data.goal,
+          experience_level: data.experienceLevel,
+          menstrual_tracking: data.menstrualTracking,
+          last_period_date: data.lastPeriodDate || null,
+          cycle_duration: data.cycleDuration || 28,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
       
-      // Store user data in localStorage for demo purposes
+      // Also store in localStorage for compatibility with existing components
       localStorage.setItem('fitnessUserProfile', JSON.stringify(data));
       
       toast.success('Profile completed successfully!');
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Profile submission error:', error);
       toast.error('Failed to save profile. Please try again.');
     } finally {
@@ -160,7 +259,18 @@ const UserProfile = () => {
       </div>
     );
   };
-  
+
+  if (isInitialLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2">Loading profile...</span>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-screen flex flex-col items-center justify-center py-24 px-4 sm:px-6 lg:px-8">

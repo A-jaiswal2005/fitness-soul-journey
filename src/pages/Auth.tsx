@@ -1,42 +1,32 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Layout } from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import AuthForm from '@/components/AuthForm';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   
-  const handleContinue = () => {
-    // Initialize user profile data if it doesn't exist
-    if (!localStorage.getItem('fitnessUserProfile')) {
-      // Set default empty profile
-      localStorage.setItem('fitnessUserProfile', JSON.stringify({
-        name: '',
-        age: 30,
-        sex: 'male',
-        weight: 70,
-        height: 170,
-        goal: 'improve_fitness',
-        experienceLevel: 'beginner'
-      }));
-      
-      // Navigate to profile page to complete setup
-      toast.info('Please complete your profile to get personalized recommendations');
-      navigate('/profile');
-    } else {
-      // If profile exists, go straight to dashboard
-      navigate('/dashboard');
+  // If user is already authenticated, redirect to profile or dashboard
+  useEffect(() => {
+    if (user && !loading) {
+      // Check if user has completed profile
+      const storedProfile = localStorage.getItem('fitnessUserProfile');
+      if (storedProfile) {
+        const profile = JSON.parse(storedProfile);
+        // If profile has name set, assume it's completed
+        if (profile.name) {
+          navigate('/dashboard');
+        } else {
+          navigate('/profile');
+        }
+      } else {
+        navigate('/profile');
+      }
     }
-  };
+  }, [user, loading, navigate]);
 
   return (
     <Layout>
@@ -52,25 +42,7 @@ const Auth = () => {
             </p>
           </div>
           
-          <Card className="border border-border shadow-sm">
-            <CardHeader>
-              <CardTitle>Quick Access</CardTitle>
-              <CardDescription>
-                Continue to create your personalized AI fitness plan
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center">
-              <Button 
-                onClick={handleContinue}
-                className="w-full bg-primary hover:bg-primary/90 button-shine"
-              >
-                Continue to Profile
-              </Button>
-              <p className="mt-4 text-sm text-muted-foreground">
-                You'll need to create a profile to get personalized recommendations
-              </p>
-            </CardContent>
-          </Card>
+          <AuthForm />
         </div>
       </div>
     </Layout>

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
@@ -10,17 +11,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const isHome = location.pathname === '/';
   const isDashboard = location.pathname.includes('/dashboard');
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -41,9 +43,8 @@ export const Navbar: React.FC = () => {
     document.documentElement.classList.toggle('dark');
   };
 
-  const handleLogout = () => {
-    navigate('/');
-    toast.success('Navigation complete');
+  const handleLogout = async () => {
+    await signOut();
   };
 
   const handleNavLinkClick = (path: string) => {
@@ -116,27 +117,37 @@ export const Navbar: React.FC = () => {
               </button>
             ))}
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Link to="/profile" className="flex items-center w-full">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <button className="flex items-center w-full" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Go Home</span>
-                  </button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-full">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <Link to="/profile" className="flex items-center w-full">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <button className="flex items-center w-full" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/auth')}
+                className="text-sm font-medium"
+              >
+                Sign In
+              </Button>
+            )}
             
             <Button 
               variant="ghost" 
@@ -183,12 +194,31 @@ export const Navbar: React.FC = () => {
               </button>
             ))}
             
-            <Button 
-              asChild 
-              className="w-full mt-3 bg-primary hover:bg-primary/90"
-            >
-              <Link to="/dashboard">Go to Dashboard</Link>
-            </Button>
+            {user ? (
+              <>
+                <Button 
+                  variant="ghost"
+                  className="w-full justify-start text-left py-3 text-base font-medium text-foreground hover:text-primary"
+                  onClick={() => navigate('/profile')}
+                >
+                  Profile
+                </Button>
+                <Button 
+                  variant="ghost"
+                  className="w-full justify-start text-left py-3 text-base font-medium text-foreground hover:text-primary"
+                  onClick={handleLogout}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button 
+                asChild 
+                className="w-full mt-3 bg-primary hover:bg-primary/90"
+              >
+                <Link to="/auth">Sign In</Link>
+              </Button>
+            )}
           </div>
         </div>
       )}

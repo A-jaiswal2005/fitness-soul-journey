@@ -5,12 +5,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Brain, Heart, Timer } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Hero = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const handleGetStarted = () => {
-    navigate('/auth');
+    if (user) {
+      // If user is authenticated, check if they have completed their profile
+      const storedProfile = localStorage.getItem('fitnessUserProfile');
+      if (storedProfile) {
+        const profile = JSON.parse(storedProfile);
+        // If profile has name set, assume it's completed
+        if (profile.name) {
+          navigate('/dashboard');
+        } else {
+          navigate('/profile');
+        }
+      } else {
+        navigate('/profile');
+      }
+    } else {
+      // If not authenticated, go to auth page
+      navigate('/auth');
+    }
   };
   
   return (
@@ -39,7 +58,7 @@ const Hero = () => {
               <Button 
                 variant="outline" 
                 size="lg"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate(user ? '/dashboard' : '/auth')}
               >
                 Explore App
               </Button>
@@ -50,7 +69,7 @@ const Hero = () => {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-fitness-300/30 to-fitness-700/30 rounded-2xl transform rotate-6"></div>
               <img 
-                src="https://images.unsplash.com/photo-1544033527-b38e043368fe?q=80&w=1600&auto=format&fit=crop"
+                src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1600&auto=format&fit=crop"
                 alt="Fitness training" 
                 className="rounded-2xl shadow-xl relative z-10 max-w-md w-full object-cover"
               />

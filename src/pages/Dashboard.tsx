@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom';
@@ -16,8 +17,31 @@ import { User, LogOut, Moon, Sun, Activity, Calendar, Trophy, BarChart } from 'l
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { getProgressStats, initializeUserPlans } from '@/services/aiPlanner';
 
 const DashboardHome = () => {
+  const [stats, setStats] = useState({
+    workout: { completed: 0, total: 0, percentage: 0 },
+    diet: { completed: 0, total: 0, percentage: 0 }
+  });
+  
+  useEffect(() => {
+    // Initialize plans if not already done
+    initializeUserPlans();
+    
+    // Get current progress stats
+    const currentStats = getProgressStats();
+    setStats(currentStats);
+    
+    // Set up interval to refresh stats every few seconds
+    const interval = setInterval(() => {
+      const updatedStats = getProgressStats();
+      setStats(updatedStats);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
   return (
     <div className="space-y-8 pt-8">
       <h1 className="text-3xl font-bold">Welcome back!</h1>
@@ -33,11 +57,11 @@ const DashboardHome = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">4/5</div>
+              <div className="text-2xl font-bold">{stats.workout.completed}/{stats.workout.total}</div>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              80% completed
+              {stats.workout.percentage}% completed
             </div>
           </CardContent>
         </Card>
@@ -45,15 +69,15 @@ const DashboardHome = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Diet Plan</CardTitle>
-            <CardDescription>Calorie tracking</CardDescription>
+            <CardDescription>Meal tracking</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">1,850</div>
+              <div className="text-2xl font-bold">{stats.diet.completed}/{stats.diet.total}</div>
               <BarChart className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              cal consumed today
+              {stats.diet.percentage}% of meals completed
             </div>
           </CardContent>
         </Card>
@@ -69,7 +93,7 @@ const DashboardHome = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Upper Body - 5:30 PM
+              {new Date().toLocaleDateString('en-US', { weekday: 'long' })} Plan
             </div>
           </CardContent>
         </Card>

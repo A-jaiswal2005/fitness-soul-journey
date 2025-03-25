@@ -10,12 +10,32 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Auth = () => {
   const navigate = useNavigate();
   
   const handleContinue = () => {
-    navigate('/dashboard');
+    // Initialize user profile data if it doesn't exist
+    if (!localStorage.getItem('fitnessUserProfile')) {
+      // Set default empty profile
+      localStorage.setItem('fitnessUserProfile', JSON.stringify({
+        name: '',
+        age: 30,
+        sex: 'male',
+        weight: 70,
+        height: 170,
+        goal: 'improve_fitness',
+        experienceLevel: 'beginner'
+      }));
+      
+      // Navigate to profile page to complete setup
+      toast.info('Please complete your profile to get personalized recommendations');
+      navigate('/profile');
+    } else {
+      // If profile exists, go straight to dashboard
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -36,7 +56,7 @@ const Auth = () => {
             <CardHeader>
               <CardTitle>Quick Access</CardTitle>
               <CardDescription>
-                No authentication required - just click below to continue
+                Continue to create your personalized AI fitness plan
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center">
@@ -44,10 +64,10 @@ const Auth = () => {
                 onClick={handleContinue}
                 className="w-full bg-primary hover:bg-primary/90 button-shine"
               >
-                Continue to Dashboard
+                Continue to Profile
               </Button>
               <p className="mt-4 text-sm text-muted-foreground">
-                Authentication has been disabled for easy access
+                You'll need to create a profile to get personalized recommendations
               </p>
             </CardContent>
           </Card>

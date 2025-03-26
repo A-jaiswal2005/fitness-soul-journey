@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { initializeUserPlans, updateWorkoutCompletion } from '@/services/aiPlanner';
-import { TrainerChat } from './TrainerChat';
 
 type Exercise = {
   name: string;
@@ -26,7 +25,6 @@ export const ExercisePlanner = () => {
   const [workoutPlan, setWorkoutPlan] = useState<ExercisePlan[]>([]);
   const [currentDay, setCurrentDay] = useState<string>('Monday');
   const [loading, setLoading] = useState(true);
-  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     // Initialize workout plan from localStorage
@@ -64,130 +62,95 @@ export const ExercisePlanner = () => {
     }
   };
 
-  // Function to check if a day is in the past compared to the current day
-  const isPastDay = (dayName: string) => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const todayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const dayIndex = days.indexOf(dayName);
-    
-    // Special case for Sunday (index 0) when comparing with days later in the week
-    if (todayIndex === 0 && dayIndex > 0) {
-      return true;
-    }
-    
-    // If day of the week index is less than today's index, it's a past day
-    return dayIndex < todayIndex;
-  };
-
   return (
     <div className="container py-10">
-      <div className="mb-8 space-y-2 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold">Your Exercise Plan</h1>
-          <p className="text-muted-foreground">
-            Follow this personalized workout plan to reach your fitness goals
-          </p>
-        </div>
-        <Button 
-          variant="outline"
-          onClick={() => setShowChat(!showChat)}
-          className="mt-2"
-        >
-          {showChat ? "Hide Trainer Chat" : "Ask Trainer"}
-        </Button>
+      <div className="mb-8 space-y-2">
+        <h1 className="text-3xl font-bold">Your Exercise Plan</h1>
+        <p className="text-muted-foreground">
+          Follow this personalized workout plan to reach your fitness goals
+        </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className={`md:col-span-${showChat ? '2' : '3'}`}>
-          {loading ? (
-            <div className="flex items-center justify-center h-60">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <Tabs defaultValue={currentDay} className="w-full">
-              <TabsList className="grid grid-cols-7 mb-8">
-                {workoutPlan.map((day) => (
-                  <TabsTrigger key={day.day} value={day.day} className="text-sm">
-                    {day.day.substring(0, 3)}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              {workoutPlan.map((day) => (
-                <TabsContent key={day.day} value={day.day}>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        <span>{day.day}'s Workout</span>
-                        <Badge variant="outline" className="ml-2">
-                          {day.exercises.filter(e => e.completed).length}/{day.exercises.length} completed
-                        </Badge>
-                      </CardTitle>
-                      <CardDescription>
-                        {day.exercises.some(e => e.name.includes('Rest')) 
-                          ? 'Today is your rest day. Take it easy and recover.'
-                          : 'Complete all exercises to stay on track with your fitness goals.'}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-6">
-                        {day.exercises.map((exercise, index) => (
-                          <div key={index} className="rounded-lg border p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center">
-                                  <Checkbox 
-                                    id={`${day.day}-exercise-${index}`}
-                                    checked={exercise.completed}
-                                    onCheckedChange={(checked) => {
-                                      handleExerciseCompletion(day.day, index, checked === true);
-                                    }}
-                                    className="mr-2"
-                                    disabled={isPastDay(day.day)}
-                                  />
-                                  <label 
-                                    htmlFor={`${day.day}-exercise-${index}`}
-                                    className={`font-medium text-lg ${exercise.completed ? 'line-through text-muted-foreground' : ''}`}
-                                  >
-                                    {exercise.name}
-                                  </label>
-                                </div>
-                                <p className="text-sm text-muted-foreground">{exercise.description}</p>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm font-medium">
-                                  {exercise.sets} sets × {exercise.reps} {exercise.reps > 1 ? 'reps' : 'min'}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {!exercise.completed && !exercise.name.includes('Rest') && !isPastDay(day.day) && day.day === currentDay && (
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="mt-4"
-                                onClick={() => handleExerciseCompletion(day.day, index, true)}
-                              >
-                                Mark as Complete
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              ))}
-            </Tabs>
-          )}
+      {loading ? (
+        <div className="flex items-center justify-center h-60">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-        
-        {showChat && (
-          <div className="md:col-span-1">
-            <TrainerChat />
-          </div>
-        )}
-      </div>
+      ) : (
+        <Tabs defaultValue={currentDay} className="w-full">
+          <TabsList className="grid grid-cols-7 mb-8">
+            {workoutPlan.map((day) => (
+              <TabsTrigger key={day.day} value={day.day} className="text-sm">
+                {day.day.substring(0, 3)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          
+          {workoutPlan.map((day) => (
+            <TabsContent key={day.day} value={day.day}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>{day.day}'s Workout</span>
+                    <Badge variant="outline" className="ml-2">
+                      {day.exercises.filter(e => e.completed).length}/{day.exercises.length} completed
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    {day.exercises.some(e => e.name.includes('Rest')) 
+                      ? 'Today is your rest day. Take it easy and recover.'
+                      : 'Complete all exercises to stay on track with your fitness goals.'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {day.exercises.map((exercise, index) => (
+                      <div key={index} className="rounded-lg border p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center">
+                              <Checkbox 
+                                id={`${day.day}-exercise-${index}`}
+                                checked={exercise.completed}
+                                onCheckedChange={(checked) => {
+                                  handleExerciseCompletion(day.day, index, checked === true);
+                                }}
+                                className="mr-2"
+                              />
+                              <label 
+                                htmlFor={`${day.day}-exercise-${index}`}
+                                className={`font-medium text-lg ${exercise.completed ? 'line-through text-muted-foreground' : ''}`}
+                              >
+                                {exercise.name}
+                              </label>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{exercise.description}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {exercise.sets} sets × {exercise.reps} {exercise.reps > 1 ? 'reps' : 'min'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {!exercise.completed && !exercise.name.includes('Rest') && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4"
+                            onClick={() => handleExerciseCompletion(day.day, index, true)}
+                          >
+                            Mark as Complete
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Brain, Heart, Timer, Salad, Users, BarChart4, Dumbbell } from 'lucide-react';
+import { Activity, Brain, Heart, Timer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Hero = () => {
@@ -37,12 +37,9 @@ const Hero = () => {
       <div className="absolute -top-40 -left-40 w-80 h-80 bg-fitness-100 rounded-full filter blur-3xl opacity-20"></div>
       <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-fitness-100 rounded-full filter blur-3xl opacity-20"></div>
       
-      <div className="container mx-auto px-4 py-24 relative z-10">
+      <div className="container mx-auto px-4 py-32 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-8">
-            <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full text-primary font-medium text-sm mb-4">
-              Your AI Fitness Companion
-            </div>
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
               Your <span className="text-gradient">AI-Powered</span> Fitness Journey Starts Here
             </h1>
@@ -74,10 +71,7 @@ const Hero = () => {
               <img 
                 src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1600&auto=format&fit=crop"
                 alt="Fitness training" 
-                className="rounded-2xl shadow-xl relative z-10 max-w-md w-full object-cover h-[500px]"
-                onError={(e) => {
-                  e.currentTarget.src = "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1600&auto=format&fit=crop";
-                }}
+                className="rounded-2xl shadow-xl relative z-10 max-w-md w-full object-cover"
               />
             </div>
           </div>
@@ -100,7 +94,7 @@ const Features = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all">
             <CardContent className="pt-8">
               <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
                 <Brain className="text-fitness-700 h-6 w-6" />
@@ -113,7 +107,7 @@ const Features = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all">
             <CardContent className="pt-8">
               <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
                 <Heart className="text-fitness-700 h-6 w-6" />
@@ -126,7 +120,7 @@ const Features = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all">
             <CardContent className="pt-8">
               <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
                 <Activity className="text-fitness-700 h-6 w-6" />
@@ -139,7 +133,7 @@ const Features = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all">
             <CardContent className="pt-8">
               <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
                 <Timer className="text-fitness-700 h-6 w-6" />
@@ -157,94 +151,11 @@ const Features = () => {
   );
 };
 
-const MoreFeatures = () => {
-  return (
-    <div className="py-24 bg-background">
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold mb-4">Comprehensive Features</h2>
-          <p className="text-foreground/70">
-            Everything you need for your fitness journey in one place
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <CardContent className="pt-8">
-              <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
-                <Dumbbell className="text-fitness-700 h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Personalized Workouts</h3>
-              <p className="text-foreground/70">
-                Tailored exercise plans that consider your fitness level, goals, and any injuries
-                or limitations you may have.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <CardContent className="pt-8">
-              <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
-                <Salad className="text-fitness-700 h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Nutrition Planning</h3>
-              <p className="text-foreground/70">
-                Custom meal plans that match your dietary preferences, whether you're vegetarian,
-                non-vegetarian, or prefer a mix of both.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <CardContent className="pt-8">
-              <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
-                <Users className="text-fitness-700 h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Expert Guidance</h3>
-              <p className="text-foreground/70">
-                Chat with AI-powered fitness trainers and nutritionists who can answer your questions
-                and provide guidance in real-time.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-            <CardContent className="pt-8">
-              <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
-                <BarChart4 className="text-fitness-700 h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Progress Tracking</h3>
-              <p className="text-foreground/70">
-                Monitor your progress with detailed analytics and real-time updates on your
-                nutritional intake and fitness achievements.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-border/40 bg-gradient-to-b from-card/70 to-card shadow-sm hover:shadow-md transition-all hover:-translate-y-1 lg:col-span-2">
-            <CardContent className="pt-8">
-              <div className="rounded-full w-12 h-12 bg-fitness-100/20 flex items-center justify-center mb-6">
-                <Activity className="text-fitness-700 h-6 w-6" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Comprehensive Fitness Ecosystem</h3>
-              <p className="text-foreground/70">
-                From workout planning to nutrition tracking, competition with friends, and expert guidance -
-                everything you need for a successful fitness journey is available in one integrated platform.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Index = () => {
   return (
     <Layout>
       <Hero />
       <Features />
-      <MoreFeatures />
     </Layout>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ export const NutritionistChat = () => {
   const { toast } = useToast();
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Fetch user profile data when component mounts
   useEffect(() => {
     async function fetchUserProfile() {
       try {
@@ -75,7 +73,6 @@ export const NutritionistChat = () => {
     setIsLoading(true);
 
     try {
-      // Send message to Gemini AI via Supabase Edge Function
       const response = await fetch('https://ticyyohqjxvzoeapasve.functions.supabase.co/gemini-chat', {
         method: 'POST',
         headers: {
@@ -163,7 +160,9 @@ export const NutritionistChat = () => {
                     }`}
                   >
                     {message.sender === 'ai' ? (
-                      <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+                      <ReactMarkdown components={{
+                        p: ({ node, ...props }) => <p className="prose dark:prose-invert prose-sm max-w-none" {...props} />
+                      }}>
                         {message.text}
                       </ReactMarkdown>
                     ) : (

@@ -1,196 +1,212 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Salad, SendIcon, Info } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from "react-markdown";
 
-interface Message {
+type Message = {
   id: string;
-  content: string;
-  sender: 'user' | 'nutritionist';
+  text: string;
+  sender: 'user' | 'ai';
   timestamp: Date;
-}
+};
 
 export const NutritionistChat = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: 'Hello! I\'m your AI nutritionist. How can I help you with your meal planning and nutrition today?',
-      sender: 'nutritionist',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
-  const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('gemini_api_key'));
-  const [showApiInput, setShowApiInput] = useState(!apiKey);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile data when component mounts
+  useEffect(() => {
+    async function fetchUserProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) throw error;
+          if (data) setUserProfile(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+
+    fetchUserProfile();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const scrollToBottom = () => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!inputValue.trim()) return;
-    
-    // Add user message to chat
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      text: inputValue,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
     try {
-      // For now, let's simulate a response since we don't have the actual Gemini integration yet
-      // In the real implementation, this would be replaced with an API call to the backend
-      setTimeout(() => {
-        const nutritionistResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          content: generateResponse(inputValue),
-          sender: 'nutritionist',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, nutritionistResponse]);
-        setIsLoading(false);
-      }, 1500);
+      // Send message to Gemini AI via Supabase Edge Function
+      const response = await fetch('https://ticyyohqjxvzoeapasve.functions.supabase.co/gemini-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userMessage: inputValue,
+          role: 'nutritionist',
+          userProfile: userProfile
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.reply,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+
+      setMessages((prevMessages) => [...prevMessages, aiMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to get a response from the nutritionist');
+      console.error('Error communicating with AI:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get a response from the AI nutritionist.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const generateResponse = (userInput: string) => {
-    const userInputLower = userInput.toLowerCase();
-    
-    if (userInputLower.includes('protein') || userInputLower.includes('proteins')) {
-      return "Good protein sources include chicken, fish, eggs, tofu, legumes, and dairy products. For vegetarians, I recommend incorporating more lentils, chickpeas, quinoa, and plant-based protein powders into your diet.";
-    } else if (userInputLower.includes('carb') || userInputLower.includes('carbohydrate')) {
-      return "Healthy carbs come from whole grains like brown rice and quinoa, fruits, vegetables, and legumes. These provide sustained energy and fiber, unlike refined carbs that can cause energy spikes and crashes.";
-    } else if (userInputLower.includes('fat') || userInputLower.includes('fats')) {
-      return "Focus on healthy fats from sources like avocados, nuts, seeds, olive oil, and fatty fish. These support hormone production and help with nutrient absorption, while avoiding trans fats which can increase inflammation.";
-    } else if (userInputLower.includes('meal prep') || userInputLower.includes('prepare')) {
-      return "Meal prepping saves time and helps you stay on track! Try batch cooking grains, roasting vegetables, and preparing protein sources on weekends. Store in airtight containers and mix and match throughout the week for variety.";
-    } else {
-      return "That's a great nutrition question! For the most personalized advice, I should consider your dietary preferences, goals, and any restrictions. Is there a specific aspect of nutrition or meal planning you'd like more information about?";
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const saveApiKey = () => {
-    if (apiKey) {
-      localStorage.setItem('gemini_api_key', apiKey);
-      setShowApiInput(false);
-      toast.success('API key saved!');
+      handleSubmit(e);
     }
   };
 
   return (
-    <Card className="flex flex-col h-[600px] max-h-[80vh]">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center">
-          <Salad className="mr-2 h-5 w-5" />
-          Nutritionist Chat
+    <Card className="h-[calc(100vh-11rem)] flex flex-col">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-medium">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src="/placeholder.svg" alt="Nutritionist" />
+              <AvatarFallback>NT</AvatarFallback>
+            </Avatar>
+            <span>Nutritionist Chat</span>
+          </div>
         </CardTitle>
       </CardHeader>
-      
-      {showApiInput ? (
-        <CardContent className="flex flex-col items-center justify-center h-full space-y-4">
-          <div className="bg-muted p-4 rounded-lg max-w-md mx-auto">
-            <div className="flex items-start gap-2 mb-3">
-              <Info size={18} className="text-primary mt-0.5" />
-              <p className="text-sm text-muted-foreground">
-                To enable the AI nutritionist chat, please enter your Gemini API key. Your key will be stored locally.
-              </p>
+      <CardContent className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto mb-4 pr-2">
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <p>Ask any questions about your nutrition plan.</p>
+              <p className="text-sm mt-2">Examples:</p>
+              <ul className="text-sm mt-1 space-y-1">
+                <li>"What are good protein sources for {userProfile?.food_preference || 'my diet'}?"</li>
+                <li>"How can I adjust my meals for more energy?"</li>
+                <li>"Can you suggest a healthy snack for post-workout?"</li>
+              </ul>
             </div>
-            <Input
-              type="password"
-              placeholder="Enter your Gemini API key"
-              value={apiKey || ''}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="mb-3"
-            />
-            <Button onClick={saveApiKey} className="w-full">
-              Save API Key
-            </Button>
-          </div>
-        </CardContent>
-      ) : (
-        <>
-          <CardContent className="flex-1 overflow-y-auto p-4">
+          ) : (
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    message.sender === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`rounded-lg px-3 py-2 max-w-[80%] ${
                       message.sender === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
+                    {message.sender === 'ai' ? (
+                      <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+                        {message.text}
+                      </ReactMarkdown>
+                    ) : (
+                      <p>{message.text}</p>
+                    )}
+                    <div
+                      className={`text-xs mt-1 ${
+                        message.sender === 'user'
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
                       {message.timestamp.toLocaleTimeString([], {
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
                       })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] rounded-lg p-3 bg-muted">
-                    <div className="flex space-x-2">
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                      <Skeleton className="h-4 w-4 rounded-full" />
                     </div>
                   </div>
                 </div>
-              )}
-              
-              <div ref={endOfMessagesRef} />
+              ))}
+              <div ref={messagesEndRef} />
             </div>
-          </CardContent>
-          
-          <CardFooter className="pt-3 border-t">
-            <div className="flex w-full items-center space-x-2">
-              <Input
-                placeholder="Ask about nutrition, meal plans, ingredients..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={isLoading}
-              />
-              <Button size="icon" onClick={handleSendMessage} disabled={isLoading || !inputValue.trim()}>
-                <SendIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardFooter>
-        </>
-      )}
+          )}
+        </div>
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <Textarea
+            placeholder="Ask about your nutrition..."
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            className="min-h-[60px] resize-none"
+            disabled={isLoading}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="shrink-0"
+            disabled={isLoading || !inputValue.trim()}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   );
 };

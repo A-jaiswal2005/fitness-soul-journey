@@ -62,6 +62,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            {/* Fallback route to catch any unmatched paths */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

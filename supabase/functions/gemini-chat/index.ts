@@ -12,21 +12,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get the Gemini API key from environment variables
-  const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+  // Set the fixed Gemini API key (the one provided by the user)
+  const geminiApiKey = "AIzaSyBWu6GoGGTYUZpRJMIm6VIGwxtU-IGDxDk";
   
-  if (!geminiApiKey) {
-    return new Response(
-      JSON.stringify({ error: 'Missing Gemini API key in environment variables' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-  }
-
   try {
-    const { userMessage, role } = await req.json();
+    const { userMessage, role, userProfile } = await req.json();
     
     if (!userMessage) {
       return new Response(
@@ -38,12 +28,40 @@ serve(async (req) => {
       );
     }
 
-    // Determine the system prompt based on the role
+    // Determine the system prompt based on the role with enhanced instructions
     let systemPrompt = '';
     if (role === 'trainer') {
-      systemPrompt = 'You are an expert fitness trainer providing advice on workouts, exercises, form, and fitness routines. Be supportive and encouraging while providing accurate, personalized fitness guidance. Focus on safety and proper technique.';
+      systemPrompt = `You are an expert fitness trainer providing personalized workout advice based on this user profile:
+Height: ${userProfile?.height || 'unknown'} cm
+Weight: ${userProfile?.weight || 'unknown'} kg
+Goal: ${userProfile?.goal || 'general fitness'}
+Experience: ${userProfile?.experience_level || 'beginner'}
+Injuries: ${userProfile?.injuries || 'none'}
+
+When suggesting exercises, always provide a structured response with:
+1. Name of exercise
+2. Sets and reps
+3. Clear instructions for proper form
+4. Variations based on experience level
+5. Information on which muscle groups are targeted
+
+Be supportive and encouraging while prioritizing safety and proper technique.`;
     } else if (role === 'nutritionist') {
-      systemPrompt = 'You are an expert nutritionist providing advice on meal planning, nutrition, healthy eating, and dietary choices. Provide evidence-based nutritional guidance while being supportive and helpful. Tailor your advice to the person\'s goals.';
+      systemPrompt = `You are an expert nutritionist providing personalized nutrition advice based on this user profile:
+Height: ${userProfile?.height || 'unknown'} cm
+Weight: ${userProfile?.weight || 'unknown'} kg
+Goal: ${userProfile?.goal || 'general health'}
+Dietary preference: ${userProfile?.food_preference || 'no specific preference'}
+Allergies: ${userProfile?.allergies || 'none'}
+
+When suggesting meals or nutrition plans, always provide a structured response with:
+1. Clear meal names and portion sizes
+2. Estimated calories and macronutrients (protein, carbs, fat)
+3. Key ingredients and simple preparation instructions
+4. How this supports their specific fitness goals
+5. Alternative options for different preferences
+
+Keep all suggestions aligned with their dietary preferences (vegetarian, non-vegetarian, or both).`;
     } else {
       systemPrompt = 'You are a helpful assistant providing fitness and nutrition advice.';
     }

@@ -1,196 +1,212 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dumbbell, SendIcon, Info } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Send } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import ReactMarkdown from "react-markdown";
 
-interface Message {
+type Message = {
   id: string;
-  content: string;
-  sender: 'user' | 'trainer';
+  text: string;
+  sender: 'user' | 'ai';
   timestamp: Date;
-}
+};
 
 export const TrainerChat = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: 'Hello! I\'m your AI fitness trainer. How can I help you with your workout today?',
-      sender: 'trainer',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
-  const [apiKey, setApiKey] = useState<string | null>(localStorage.getItem('gemini_api_key'));
-  const [showApiInput, setShowApiInput] = useState(!apiKey);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Fetch user profile data when component mounts
+  useEffect(() => {
+    async function fetchUserProfile() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          if (error) throw error;
+          if (data) setUserProfile(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      }
+    }
+
+    fetchUserProfile();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   const scrollToBottom = () => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleSendMessage = async () => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!inputValue.trim()) return;
-    
-    // Add user message to chat
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputValue,
+      text: inputValue,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
     try {
-      // For now, let's simulate a response since we don't have the actual Gemini integration yet
-      // In the real implementation, this would be replaced with an API call to the backend
-      setTimeout(() => {
-        const trainerResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          content: generateResponse(inputValue),
-          sender: 'trainer',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, trainerResponse]);
-        setIsLoading(false);
-      }, 1500);
+      // Send message to Gemini AI via Supabase Edge Function
+      const response = await fetch('https://ticyyohqjxvzoeapasve.functions.supabase.co/gemini-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userMessage: inputValue,
+          role: 'trainer',
+          userProfile: userProfile
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: data.reply,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+
+      setMessages((prevMessages) => [...prevMessages, aiMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to get a response from the trainer');
+      console.error('Error communicating with AI:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get a response from the AI assistant.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const generateResponse = (userInput: string) => {
-    const userInputLower = userInput.toLowerCase();
-    
-    if (userInputLower.includes('how many') || userInputLower.includes('reps') || userInputLower.includes('sets')) {
-      return "For beginners, I recommend 3 sets of 8-12 reps. As you progress, you can increase to 4 sets. Remember to maintain proper form throughout!";
-    } else if (userInputLower.includes('form') || userInputLower.includes('technique')) {
-      return "Good form is crucial! Keep your back straight, engage your core, and focus on controlled movements rather than speed. Would you like me to explain the proper form for a specific exercise?";
-    } else if (userInputLower.includes('rest') || userInputLower.includes('recovery')) {
-      return "Rest days are just as important as workout days! For muscle recovery, aim for 24-48 hours between training the same muscle group. Make sure to get enough sleep and stay hydrated.";
-    } else if (userInputLower.includes('weight') || userInputLower.includes('heavy')) {
-      return "Choose a weight that challenges you in the last few reps but allows you to maintain proper form throughout the set. It's better to start lighter and focus on form before increasing weight.";
-    } else {
-      return "That's a great question about your workout! To give you the most helpful advice, I'd need to consider your fitness level, goals, and any limitations. Is there a specific aspect of this exercise or training plan you'd like me to address?";
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const saveApiKey = () => {
-    if (apiKey) {
-      localStorage.setItem('gemini_api_key', apiKey);
-      setShowApiInput(false);
-      toast.success('API key saved!');
+      handleSubmit(e);
     }
   };
 
   return (
-    <Card className="flex flex-col h-[600px] max-h-[80vh]">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center">
-          <Dumbbell className="mr-2 h-5 w-5" />
-          Fitness Trainer Chat
+    <Card className="h-[calc(100vh-11rem)] flex flex-col">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-medium">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src="/placeholder.svg" alt="Trainer" />
+              <AvatarFallback>PT</AvatarFallback>
+            </Avatar>
+            <span>Personal Trainer Chat</span>
+          </div>
         </CardTitle>
       </CardHeader>
-      
-      {showApiInput ? (
-        <CardContent className="flex flex-col items-center justify-center h-full space-y-4">
-          <div className="bg-muted p-4 rounded-lg max-w-md mx-auto">
-            <div className="flex items-start gap-2 mb-3">
-              <Info size={18} className="text-primary mt-0.5" />
-              <p className="text-sm text-muted-foreground">
-                To enable the AI trainer chat, please enter your Gemini API key. Your key will be stored locally.
-              </p>
+      <CardContent className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto mb-4 pr-2">
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <p>Ask any questions about your workout plan.</p>
+              <p className="text-sm mt-2">Examples:</p>
+              <ul className="text-sm mt-1 space-y-1">
+                <li>"How do I perform a proper squat?"</li>
+                <li>"Can you suggest alternatives for bench press?"</li>
+                <li>"How do I modify my workout with my knee injury?"</li>
+              </ul>
             </div>
-            <Input
-              type="password"
-              placeholder="Enter your Gemini API key"
-              value={apiKey || ''}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="mb-3"
-            />
-            <Button onClick={saveApiKey} className="w-full">
-              Save API Key
-            </Button>
-          </div>
-        </CardContent>
-      ) : (
-        <>
-          <CardContent className="flex-1 overflow-y-auto p-4">
+          ) : (
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    message.sender === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`rounded-lg px-3 py-2 max-w-[80%] ${
                       message.sender === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
+                    {message.sender === 'ai' ? (
+                      <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+                        {message.text}
+                      </ReactMarkdown>
+                    ) : (
+                      <p>{message.text}</p>
+                    )}
+                    <div
+                      className={`text-xs mt-1 ${
+                        message.sender === 'user'
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
                       {message.timestamp.toLocaleTimeString([], {
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
                       })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] rounded-lg p-3 bg-muted">
-                    <div className="flex space-x-2">
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                      <Skeleton className="h-4 w-4 rounded-full" />
                     </div>
                   </div>
                 </div>
-              )}
-              
-              <div ref={endOfMessagesRef} />
+              ))}
+              <div ref={messagesEndRef} />
             </div>
-          </CardContent>
-          
-          <CardFooter className="pt-3 border-t">
-            <div className="flex w-full items-center space-x-2">
-              <Input
-                placeholder="Ask about exercises, form, rest days..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyPress}
-                disabled={isLoading}
-              />
-              <Button size="icon" onClick={handleSendMessage} disabled={isLoading || !inputValue.trim()}>
-                <SendIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardFooter>
-        </>
-      )}
+          )}
+        </div>
+        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+          <Textarea
+            placeholder="Ask about your workout..."
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            className="min-h-[60px] resize-none"
+            disabled={isLoading}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="shrink-0"
+            disabled={isLoading || !inputValue.trim()}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   );
 };

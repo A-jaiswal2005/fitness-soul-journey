@@ -1,4 +1,3 @@
-
 // AI Planner service for generating personalized workout and diet plans
 
 type UserProfile = {
@@ -8,6 +7,8 @@ type UserProfile = {
   sex?: string;
   goal?: string;
   experienceLevel?: string;
+  dietaryPreference?: 'vegetarian' | 'non-vegetarian' | 'both';
+  injuries?: string[];
 };
 
 type ExercisePlan = {
@@ -45,7 +46,7 @@ export const calculateBMI = (height: number, weight: number): number => {
 
 // Generate appropriate workout plan based on user profile
 export const generateWorkoutPlan = (profile: UserProfile): ExercisePlan[] => {
-  const { age = 30, goal = 'improve_fitness', experienceLevel = 'beginner', sex = 'male' } = profile;
+  const { age = 30, goal = 'improve_fitness', experienceLevel = 'beginner', sex = 'male', injuries = [] } = profile;
   const bmi = profile.height && profile.weight ? calculateBMI(profile.height, profile.weight) : 25;
   
   const workoutPlans: ExercisePlan[] = [];
@@ -291,9 +292,65 @@ export const generateWorkoutPlan = (profile: UserProfile): ExercisePlan[] => {
     ]
   };
   
+  // Filter out exercises that would aggravate injuries
+  const filterExercisesByInjuries = (exerciseList: any[]) => {
+    if (!injuries.length) return exerciseList;
+    
+    return exerciseList.filter(exercise => {
+      // Skip filtering for rest days
+      if (exercise.name.includes('Rest') || exercise.name.includes('Active Recovery')) {
+        return true;
+      }
+      
+      // Filter based on common injuries
+      if (injuries.includes('knee') && 
+          (exercise.name.includes('Squat') || 
+           exercise.name.includes('Lunge') || 
+           exercise.name.includes('Jump'))) {
+        return false;
+      }
+      
+      if (injuries.includes('back') && 
+          (exercise.name.includes('Deadlift') || 
+           exercise.name.includes('Row') || 
+           exercise.name.includes('Twist'))) {
+        return false;
+      }
+      
+      if (injuries.includes('shoulder') && 
+          (exercise.name.includes('Press') || 
+           exercise.name.includes('Overhead') || 
+           exercise.name.includes('Raises'))) {
+        return false;
+      }
+      
+      if (injuries.includes('wrist') && 
+          (exercise.name.includes('Push-up') || 
+           exercise.name.includes('Plank') || 
+           exercise.name.includes('Curl'))) {
+        return false;
+      }
+      
+      return true;
+    });
+  };
+  
   // Generate workout plan from template
   selectedTemplate.forEach(dayPlan => {
-    const dailyExercises = exercises[dayPlan.focus] || exercises.cardio;
+    let dailyExercises = exercises[dayPlan.focus] || exercises.cardio;
+    
+    // Filter exercises based on injuries
+    dailyExercises = filterExercisesByInjuries(dailyExercises);
+    
+    // If all exercises were filtered out, add a rest day exercise
+    if (dailyExercises.length === 0) {
+      dailyExercises = [{
+        name: 'Rest Day (Modified due to injuries)',
+        sets: 1,
+        reps: 1,
+        description: 'Take a rest day to allow your body to recover. Consider gentle stretching or mobility work that doesn\'t aggravate your injuries.'
+      }];
+    }
     
     // Make copies of the exercises to avoid modifying the source objects
     const dailyExercisesCopy = dailyExercises.map(ex => ({
@@ -312,7 +369,12 @@ export const generateWorkoutPlan = (profile: UserProfile): ExercisePlan[] => {
 
 // Generate appropriate diet plan based on user profile
 export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
-  const { age = 30, goal = 'improve_fitness', sex = 'male' } = profile;
+  const { 
+    age = 30, 
+    goal = 'improve_fitness', 
+    sex = 'male', 
+    dietaryPreference = 'both' 
+  } = profile;
   const bmi = profile.height && profile.weight ? calculateBMI(profile.height, profile.weight) : 25;
   
   // Calculate base calorie target
@@ -361,8 +423,67 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
   const fatGrams = Math.round((calorieTarget * fatPercentage) / 9); // 9 calories per gram of fat
   const carbGrams = Math.round((calorieTarget * carbPercentage) / 4); // 4 calories per gram of carbs
   
-  // Create meal templates
-  const breakfastOptions = [
+  // Filter meal options based on dietary preference
+  const filterMealsByDietaryPreference = (meals: any[]) => {
+    if (dietaryPreference === 'both') return meals;
+    
+    return meals.filter(meal => {
+      const mealDescription = meal.description.toLowerCase();
+      
+      if (dietaryPreference === 'vegetarian') {
+        return !mealDescription.includes('chicken') && 
+               !mealDescription.includes('beef') && 
+               !mealDescription.includes('fish') && 
+               !mealDescription.includes('turkey') && 
+               !mealDescription.includes('salmon');
+      } else if (dietaryPreference === 'non-vegetarian') {
+        return mealDescription.includes('chicken') || 
+               mealDescription.includes('beef') || 
+               mealDescription.includes('fish') || 
+               mealDescription.includes('turkey') || 
+               mealDescription.includes('salmon') || 
+               !mealDescription.includes('tofu');
+      }
+      
+      return true;
+    });
+  };
+  
+  // Create vegetarian alternatives for meal options
+  const createVegetarianAlternative = (meal: any) => {
+    const mealDesc = meal.description.toLowerCase();
+    
+    if (mealDesc.includes('chicken')) {
+      return {
+        ...meal,
+        name: meal.name.replace('Chicken', 'Tofu'),
+        description: meal.description.replace('chicken', 'tofu').replace('Chicken', 'Tofu')
+      };
+    } else if (mealDesc.includes('beef')) {
+      return {
+        ...meal,
+        name: meal.name.replace('Beef', 'Lentil').replace('beef', 'lentil'),
+        description: meal.description.replace('beef', 'lentil patty').replace('Beef', 'Lentil')
+      };
+    } else if (mealDesc.includes('turkey')) {
+      return {
+        ...meal,
+        name: meal.name.replace('Turkey', 'Chickpea').replace('turkey', 'chickpea'),
+        description: meal.description.replace('turkey', 'chickpea patty').replace('Turkey', 'Chickpea')
+      };
+    } else if (mealDesc.includes('fish') || mealDesc.includes('salmon')) {
+      return {
+        ...meal,
+        name: meal.name.replace('Fish', 'Tempeh').replace('Salmon', 'Tempeh'),
+        description: meal.description.replace('fish', 'tempeh').replace('salmon', 'tempeh')
+      };
+    }
+    
+    return meal;
+  };
+  
+  // Create meal templates with dietary preferences in mind
+  let breakfastOptions = [
     {
       name: 'Protein Oatmeal',
       time: '7:00 AM',
@@ -409,7 +530,7 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     }
   ];
   
-  const lunchOptions = [
+  let lunchOptions = [
     {
       name: 'Chicken Salad',
       time: '12:30 PM',
@@ -456,7 +577,7 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     }
   ];
   
-  const dinnerOptions = [
+  let dinnerOptions = [
     {
       name: 'Salmon & Vegetables',
       time: '6:30 PM',
@@ -503,7 +624,7 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     }
   ];
   
-  const snackOptions = [
+  let snackOptions = [
     {
       name: 'Protein Shake',
       time: '3:30 PM',
@@ -550,12 +671,45 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     }
   ];
   
+  // Add vegetarian alternatives if needed
+  if (dietaryPreference === 'vegetarian') {
+    // Create vegetarian alternatives for non-vegetarian meals
+    lunchOptions = lunchOptions.map(meal => {
+      if (meal.description.toLowerCase().includes('chicken') || 
+          meal.description.toLowerCase().includes('beef') || 
+          meal.description.toLowerCase().includes('turkey') || 
+          meal.description.toLowerCase().includes('fish') || 
+          meal.description.toLowerCase().includes('salmon')) {
+        return createVegetarianAlternative(meal);
+      }
+      return meal;
+    });
+    
+    dinnerOptions = dinnerOptions.map(meal => {
+      if (meal.description.toLowerCase().includes('chicken') || 
+          meal.description.toLowerCase().includes('beef') || 
+          meal.description.toLowerCase().includes('turkey') || 
+          meal.description.toLowerCase().includes('fish') || 
+          meal.description.toLowerCase().includes('salmon')) {
+        return createVegetarianAlternative(meal);
+      }
+      return meal;
+    });
+  }
+  
   // Create a 7-day diet plan
   const mealPlans: MealPlan[] = [];
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
+  // Get current day of week
+  const currentDayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const orderedDays = [
+    ...daysOfWeek.slice(currentDayIndex === 0 ? 6 : currentDayIndex - 1), 
+    ...daysOfWeek.slice(0, currentDayIndex === 0 ? 6 : currentDayIndex - 1)
+  ];
+  
   // Create a different meal plan for each day
-  daysOfWeek.forEach((day, index) => {
+  orderedDays.forEach((day, index) => {
     // Rotate through meal options
     const breakfast = breakfastOptions[index % breakfastOptions.length];
     const lunch = lunchOptions[index % lunchOptions.length];
@@ -563,10 +717,27 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     const snack = snackOptions[index % snackOptions.length];
     
     // Make copies of the meals to avoid modifying the source objects
-    const breakfastCopy = { ...breakfast, completed: false };
-    const lunchCopy = { ...lunch, completed: false };
-    const dinnerCopy = { ...dinner, completed: false };
-    const snackCopy = { ...snack, completed: false };
+    const breakfastCopy = { 
+      ...breakfast, 
+      completed: false,
+      // Mark earlier days of the current week as completed based on current day
+      completed: index < 3 && day !== orderedDays[0]
+    };
+    const lunchCopy = { 
+      ...lunch, 
+      completed: false,
+      completed: index < 3 && day !== orderedDays[0]
+    };
+    const dinnerCopy = { 
+      ...dinner, 
+      completed: false,
+      completed: index < 3 && day !== orderedDays[0]
+    };
+    const snackCopy = { 
+      ...snack, 
+      completed: false,
+      completed: index < 3 && day !== orderedDays[0]
+    };
     
     mealPlans.push({
       day,
@@ -676,3 +847,40 @@ export const getProgressStats = () => {
   };
 };
 
+// Real-time nutrient calculation
+export const calculateDailyNutrition = (completedMeals: any[]) => {
+  let totalCalories = 0;
+  let totalProtein = 0;
+  let totalCarbs = 0;
+  let totalFat = 0;
+  
+  completedMeals.forEach(meal => {
+    totalCalories += meal.calories || 0;
+    totalProtein += meal.macros?.protein || 0;
+    totalCarbs += meal.macros?.carbs || 0;
+    totalFat += meal.macros?.fat || 0;
+  });
+  
+  return {
+    calories: totalCalories,
+    protein: totalProtein,
+    carbs: totalCarbs,
+    fat: totalFat
+  };
+};
+
+// Get completed meals for today
+export const getTodaysMeals = () => {
+  const dietPlanJSON = localStorage.getItem('dietPlan');
+  if (!dietPlanJSON) return [];
+  
+  const dietPlan = JSON.parse(dietPlanJSON);
+  const today = new Date().getDay();
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayName = daysOfWeek[today];
+  
+  const todaysPlan = dietPlan.find((day: any) => day.day === todayName);
+  if (!todaysPlan) return [];
+  
+  return todaysPlan.meals.filter((meal: any) => meal.completed);
+};

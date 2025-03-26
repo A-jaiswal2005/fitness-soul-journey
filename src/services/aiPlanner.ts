@@ -716,26 +716,24 @@ export const generateDietPlan = (profile: UserProfile): MealPlan[] => {
     const dinner = dinnerOptions[index % dinnerOptions.length];
     const snack = snackOptions[index % snackOptions.length];
     
-    // Make copies of the meals to avoid modifying the source objects
+    // Fixed the duplicate property issue - only define completed once
     const breakfastCopy = { 
       ...breakfast, 
-      completed: false,
-      // Mark earlier days of the current week as completed based on current day
       completed: index < 3 && day !== orderedDays[0]
     };
+    
     const lunchCopy = { 
       ...lunch, 
-      completed: false,
       completed: index < 3 && day !== orderedDays[0]
     };
+    
     const dinnerCopy = { 
       ...dinner, 
-      completed: false,
       completed: index < 3 && day !== orderedDays[0]
     };
+    
     const snackCopy = { 
       ...snack, 
-      completed: false,
       completed: index < 3 && day !== orderedDays[0]
     };
     
